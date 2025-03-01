@@ -1,0 +1,38 @@
+{
+  "name": "thanos.snap",
+  "version": "1.0.0",
+  "description": "A package that makes elements disappear with a Thanos snap effect",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm,iife --globalName Thanos --dts --minify",
+    "dev": "tsup src/index.ts --format cjs,esm,iife --globalName Thanos --dts --watch",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "thanos",
+    "snap",
+    "animation",
+    "effect",
+    "particle",
+    "disappear",
+    "telegram"
+  ],
+  "author": "",
+  "license": "MIT",
+  "peerDependencies": {
+    "motion": "^10.17.0",
+    "html2canvas": "^1.4.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.24",
+    "typescript": "^5.3.3",
+    "tslib": "^2.6.2",
+    "tsup": "^8.0.2",
+    "@types/html2canvas": "^1.0.0"
+  }
+} 

@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thanos.snap</title>
+    <!-- Load dependencies first -->
+    <script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/motion@10.17.0/dist/motion.min.js"></script>
+    <!-- Load Thanos after dependencies -->
+    <script src="../dist/index.global.js"></script>
+    <style>
+        :root {
+            --purple: #6b21a8;
+            --purple-hover: #7c3aed;
+            --blue: #3b82f6;
+            --blue-light: #dbeafe;
+            --gray: #f3f4f6;
+            --gray-dark: #9ca3af;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            margin: 0;
+            background: #f5f5f5;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem;
+        }
+
+        .phone-container {
+            width: 360px;
+            height: 700px;
+            background: white;
+            border-radius: 30px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            position: relative;
+            border: 10px solid #222;
+        }
+
+        .phone-header {
+            background: var(--purple);
+            color: white;
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .phone-header h1 {
+            margin: 0;
+            font-size: 1.2rem;
+            flex-grow: 1;
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--blue-light);
+            margin-right: 0.75rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            color: var(--blue);
+        }
+
+        .chat-container {
+            padding: 1rem;
+            height: calc(100% - 140px);
+            overflow-y: auto;
+            background: #f5f5f5;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .message {
+            max-width: 80%;
+            padding: 0.75rem 1rem;
+            border-radius: 18px;
+            position: relative;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        .message.received {
+            background: white;
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+        }
+
+        .message.sent {
+            background: var(--blue);
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message-time {
+            font-size: 0.7rem;
+            opacity: 0.7;
+            margin-top: 0.25rem;
+            text-align: right;
+        }
+
+        .delete-btn {
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        }
+
+        .message.received .delete-btn {
+            top: -8px;
+            right: -8px;
+        }
+
+        .message.sent .delete-btn {
+            top: -8px;
+            left: -8px;
+        }
+
+        .message:hover .delete-btn {
+            opacity: 1;
+        }
+
+        .delete-btn:hover {
+            background: #ff4d4d;
+            color: white;
+        }
+
+        .phone-footer {
+            padding: 0.75rem;
+            background: white;
+            border-top: 1px solid #eee;
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .message-input {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .message-input input {
+            flex-grow: 1;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            outline: none;
+        }
+
+        .message-input input:focus {
+            border-color: var(--blue);
+        }
+
+        .send-btn {
+            background: var(--purple);
+            color: white;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .send-btn:hover {
+            background: var(--purple-hover);
+        }
+
+        .controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 100;
+        }
+
+        .reset-btn {
+            background: var(--purple);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .reset-btn:hover {
+            background: var(--purple-hover);
+        }
+        
+        /* Animation keyframes */
+        @keyframes fadeIn {
+            from { 
+                opacity: 0; 
+                transform: translateY(20px); 
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0); 
+            }
+        }
+        
+        /* Class for animated messages */
+        .message.animated {
+            animation: fadeIn 0.4s ease-out;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <button class="reset-btn" onclick="resetDemo()">Reset Demo</button>
+        <button class="reset-btn" id="animation-toggle" onclick="toggleAnimations()">Disable Animations</button>
+    </div>
+
+    <div class="phone-container">
+        <div class="phone-header">
+            <div class="avatar">T</div>
+            <h1>Thanos</h1>
+        </div>
+
+        <div class="chat-container" id="chat-container">
+            <!-- Messages will be added here -->
+        </div>
+
+        <div class="phone-footer">
+            <div class="message-input">
+                <input type="text" id="message-input" placeholder="Type a message..." autocomplete="off">
+                <button class="send-btn" onclick="sendMessage()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M15.964.686a.5.5 0 0 0-.65-.65L.767 5.855H.766l-.452.18a.5.5 0 0 0-.082.887l.41.26.001.002 4.995 3.178 3.178 4.995.002.002.26.41a.5.5 0 0 0 .886-.083l6-15Zm-1.833 1.89L6.637 10.07l-.215-.338a.5.5 0 0 0-.154-.154l-.338-.215 7.494-7.494 1.178-.471-.47 1.178Z"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const chatContainer = document.getElementById('chat-container');
+        const messageInput = document.getElementById('message-input');
+        let messageCount = 0;
+        
+        // Demo settings
+        const demoSettings = {
+            enableAnimations: true // Toggle this to enable/disable animations
+        };
+
+        // Initial messages
+        const initialMessages = [
+            { text: "Hey there! How's it going?", type: "received" },
+            { text: "I'm doing great! Just working on this cool animation effect.", type: "sent" },
+            { text: "Oh nice! What kind of animation?", type: "received" },
+            { text: "It's a disintegration effect, like when Thanos snaps his fingers.", type: "sent" },
+            { text: "That sounds awesome! Can I see it in action?", type: "received" },
+            { text: "Sure! Just click the X on any message to delete it with the snap effect.", type: "sent" }
+        ];
+
+        // Add initial messages with a delay
+        function addInitialMessages() {
+            let delay = 0;
+            initialMessages.forEach(msg => {
+                setTimeout(() => {
+                    addMessage(msg.text, msg.type);
+                }, delay);
+                // Increase delay between messages when animations are enabled
+                delay += demoSettings.enableAnimations ? 500 : 100;
+            });
+        }
+
+        // Add a message to the chat
+        function addMessage(text, type) {
+            const messageId = `message-${messageCount++}`;
+            const message = document.createElement('div');
+            
+            // Apply animation class if animations are enabled
+            const animationClass = demoSettings.enableAnimations ? 'animated' : '';
+            message.className = `message ${type} ${animationClass}`;
+            message.id = messageId;
+            
+            message.innerHTML = `
+                <div class="message-content">${text}</div>
+                <div class="message-time">${getCurrentTime()}</div>
+                <div class="delete-btn" onclick="deleteMessage('${messageId}')">✕</div>
+            `;
+            
+            chatContainer.appendChild(message);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        // Delete a message with the snap effect
+        function deleteMessage(messageId) {
+            const message = document.getElementById(messageId);
+            if (!message) return;
+            
+            Thanos.snap(message, { 
+                direction: 'up',
+                randomness: 1,
+                animated: demoSettings.enableAnimations
+            });
+        }
+
+        // Send a new message
+        function sendMessage() {
+            const text = messageInput.value.trim();
+            if (text) {
+                addMessage(text, 'sent');
+                messageInput.value = '';
+                
+                // Simulate a reply after a short delay
+                setTimeout(() => {
+                    const replies = [
+                        "That's interesting!",
+                        "Tell me more about that.",
+                        "Cool! 😎",
+                        "I see what you mean.",
+                        "Wow, that's impressive!",
+                        "Hmm, I'm not sure about that.",
+                        "Let's talk about something else.",
+                        "Have you tried clicking the X to delete messages?",
+                        "The snap effect is really satisfying, isn't it?"
+                    ];
+                    const randomReply = replies[Math.floor(Math.random() * replies.length)];
+                    addMessage(randomReply, 'received');
+                }, 1000 + Math.random() * 1000);
+            }
+        }
+
+        // Get current time in HH:MM format
+        function getCurrentTime() {
+            const now = new Date();
+            return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+        }
+
+        // Reset the demo
+        function resetDemo() {
+            chatContainer.innerHTML = '';
+            messageCount = 0;
+            addInitialMessages();
+        }
+
+        // Toggle animations
+        function toggleAnimations() {
+            demoSettings.enableAnimations = !demoSettings.enableAnimations;
+            document.getElementById('animation-toggle').textContent = 
+                demoSettings.enableAnimations ? 'Disable Animations' : 'Enable Animations';
+            
+            // Update existing messages
+            const messages = document.querySelectorAll('.message');
+            messages.forEach(message => {
+                if (demoSettings.enableAnimations) {
+                    message.classList.add('animated');
+                } else {
+                    message.classList.remove('animated');
+                }
+            });
+        }
+
+        // Handle Enter key press
+        messageInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // Initialize the demo
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set initial animation state
+            demoSettings.enableAnimations = true;
+            document.getElementById('animation-toggle').textContent = 'Disable Animations';
+            
+            // Add initial messages
+            addInitialMessages();
+        });
+    </script>
+</body>
+</html> 
