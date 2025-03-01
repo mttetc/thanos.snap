@@ -98,6 +98,30 @@ This package works in all modern browsers that support:
 - [Motion](https://motion.dev/) - For smooth animations
 - [html2canvas](https://html2canvas.hertzen.com/) - For element capture
 
+## Development
+
+To set up the project for development:
+
+```bash
+# Install dependencies
+npm install
+
+# Build the library
+npm run build
+
+# Build the library and copy to demo folder
+npm run build:all
+
+# Run the demo server
+npm run demo
+
+# Build and run the demo in one command
+npm run start:all
+
+# Watch for changes and rebuild
+npm run dev
+```
+
 ## License
 
 MIT 

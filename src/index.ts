@@ -135,6 +135,9 @@ declare global {
     Thanos: {
       snap: (element: HTMLElement, options?: ThanosSnapOptions) => Promise<void>;
     };
+    thanossnap: {
+      snap: (element: HTMLElement, options?: ThanosSnapOptions) => Promise<void>;
+    };
   }
 }
 
@@ -776,14 +779,19 @@ export class Thanos {
 
 // Make Thanos available globally in browser environments
 if (typeof window !== 'undefined') {
-  // Create a proper global object with the snap method
-  window.Thanos = {
-    snap: Thanos.snap.bind(Thanos)
-  };
+  // Ensure the snap method is properly bound
+  if (typeof window.Thanos === 'object' && window.Thanos !== null) {
+    window.Thanos.snap = Thanos.snap.bind(Thanos);
+  } else {
+    // Create the global object if it doesn't exist
+    window.Thanos = {
+      snap: Thanos.snap.bind(Thanos)
+    };
+  }
   
-  // Add a console log to confirm it's loaded
-  console.log('Thanos library loaded and available globally as window.Thanos');
+  // For backwards compatibility, also expose as thanossnap
+  window.thanossnap = window.Thanos;
   
-  // Debug check to verify the snap method is available
-  console.log('Thanos.snap is a function:', typeof window.Thanos.snap === 'function');
+  // Debug log
+  console.log('thanossnap library loaded, Thanos.snap is available');
 }

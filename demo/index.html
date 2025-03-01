@@ -8,7 +8,10 @@
     <script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/motion@10.17.0/dist/motion.min.js"></script>
     <!-- Load Thanos after dependencies -->
-    <script src="../dist/index.global.js"></script>
+    <!-- <script src="../dist/index.global.js"></script> -->
+    <script src="./thanossnap.js"></script>
+    <!-- Alternative: Use the copied version if available -->
+    <!-- <script src="./thanossnap.js"></script> -->
     <style>
         :root {
             --purple: #6b21a8;
@@ -310,11 +313,37 @@
             const message = document.getElementById(messageId);
             if (!message) return;
             
-            Thanos.snap(message, { 
-                direction: 'up',
-                randomness: 1,
-                animated: demoSettings.enableAnimations
-            });
+            try {
+                // Try using Thanos.snap directly
+                if (typeof Thanos !== 'undefined' && typeof Thanos.snap === 'function') {
+                    Thanos.snap(message, { 
+                        direction: 'up',
+                        randomness: 1,
+                        animated: demoSettings.enableAnimations
+                    });
+                } 
+                // Fallback to window.Thanos.snap
+                else if (typeof window.Thanos !== 'undefined' && typeof window.Thanos.snap === 'function') {
+                    window.Thanos.snap(message, { 
+                        direction: 'up',
+                        randomness: 1,
+                        animated: demoSettings.enableAnimations
+                    });
+                }
+                // Fallback to window.thanossnap.snap
+                else if (typeof window.thanossnap !== 'undefined' && typeof window.thanossnap.snap === 'function') {
+                    window.thanossnap.snap(message, { 
+                        direction: 'up',
+                        randomness: 1,
+                        animated: demoSettings.enableAnimations
+                    });
+                }
+                else {
+                    console.error('Thanos.snap is not available!');
+                }
+            } catch (error) {
+                console.error('Error calling Thanos.snap:', error);
+            }
         }
 
         // Send a new message
