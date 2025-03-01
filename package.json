@@ -9,8 +9,8 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsup src/index.ts --format cjs,esm,iife --globalName Thanos --dts --minify",
-    "dev": "tsup src/index.ts --format cjs,esm,iife --globalName Thanos --dts --watch",
+    "build": "tsup src/index.ts --format cjs,esm,iife --globalName ThanosLib --dts --minify",
+    "dev": "tsup src/index.ts --format cjs,esm,iife --globalName ThanosLib --dts --watch",
     "prepublishOnly": "npm run build",
     "lint": "eslint src --ext .ts,.tsx",
     "lint:fix": "eslint src --ext .ts,.tsx --fix",

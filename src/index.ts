@@ -19,6 +19,14 @@
  *   randomness: 0.7
  * });
  * 
+ * // With vector direction (more flexible)
+ * Thanos.snap(element, {
+ *   vectorX: 0.7,  // Right-upward diagonal
+ *   vectorY: -0.7, // Right-upward diagonal
+ *   duration: 1.0,
+ *   particleDensity: 1.5
+ * });
+ * 
  * // In browser environments (via CDN or script tag)
  * // The Thanos class is available globally
  * Thanos.snap(element, options);
@@ -111,6 +119,10 @@ interface ThanosSnapOptions {
   duration?: number;
   /** Direction in which particles will move. Default: 'up' */
   direction?: Direction;
+  /** X-axis vector for particle movement (-1.0 to 1.0). Negative is left, positive is right. Default: 0 */
+  vectorX?: number;
+  /** Y-axis vector for particle movement (-1.0 to 1.0). Negative is up, positive is down. Default: -1 (up) */
+  vectorY?: number;
   /** Callback function to execute when animation completes */
   onComplete?: () => void;
   /** Callback function to execute when animation starts */
@@ -125,6 +137,27 @@ interface ThanosSnapOptions {
   randomness?: number;
   /** Whether to animate the element's height collapsing. Particle animations will ALWAYS run regardless of this setting. Default: true */
   animated?: boolean;
+}
+
+/**
+ * Internal options for the fade in effect
+ * @private
+ */
+interface InternalFadeInOptions {
+  /** Duration of the animation in seconds. Default: 0.8 */
+  duration?: number;
+  /** Delay before starting the animation in seconds. Default: 0 */
+  delay?: number;
+  /** Callback function to execute when animation completes */
+  onComplete?: () => void;
+  /** Callback function to execute when animation starts */
+  onStart?: () => void;
+  /** Whether to animate the element's height expanding. Default: true */
+  animated?: boolean;
+  /** Initial scale of the element (0-1). Default: 0.95 */
+  initialScale?: number;
+  /** Easing function to use for the animation. Default: 'ease-out' */
+  easing?: string;
 }
 
 declare global {
@@ -145,6 +178,8 @@ export class Thanos {
   private static defaultOptions: ThanosSnapOptions = {
     duration: 0.8,
     direction: 'up',
+    vectorX: 0,
+    vectorY: -1, // Default to upward movement
     animated: true,
     particleDensity: 1.0,
     angleVariation: 0.5, // Default angle variation (0-1, where 1 is maximum variation)
@@ -152,25 +187,32 @@ export class Thanos {
     randomness: 0.5, // Default to medium randomness
   };
 
-  private static getDirectionAngles(
-    direction: Direction, 
+  private static defaultInternalFadeInOptions: InternalFadeInOptions = {
+    duration: 0.8,
+    delay: 0,
+    animated: true,
+    initialScale: 0.95,
+    easing: 'ease-out',
+  };
+
+  private static getVectorAngle(
+    vectorX: number = 0,
+    vectorY: number = -1,
     variation: number = 0.5,
     randomness: number = 0.5
   ): { baseAngle: number; spread: number } {
-    // Base angles for each direction (in radians)
-    const baseAngles = {
-      'up': -Math.PI/2,    // Upward: -90 degrees
-      'down': Math.PI/2,   // Downward: 90 degrees
-      'left': Math.PI,     // Leftward: 180 degrees
-      'right': 0           // Rightward: 0 degrees
-    };
+    // Normalize the vector
+    const length = Math.sqrt(vectorX * vectorX + vectorY * vectorY);
     
-    // Get the base angle for the specified direction
-    const baseAngle = baseAngles[direction];
+    // If the vector is zero length, default to upward
+    let normalizedX = length > 0 ? vectorX / length : 0;
+    let normalizedY = length > 0 ? vectorY / length : -1;
     
-    // Calculate spread based on variation and randomness
-    // variation controls the maximum possible spread (0-1)
-    // randomness controls how much of that potential spread is used (0-1)
+    // Calculate the base angle from the vector
+    // atan2 takes y first, then x, and returns angle in radians
+    // Note: atan2 uses a different coordinate system where y-down is positive
+    // so we negate y to match our coordinate system where y-up is negative
+    const baseAngle = Math.atan2(normalizedY, normalizedX);
     
     // When randomness is at maximum (1.0), allow for full 360° explosion effect
     if (randomness >= 0.95) {
@@ -189,6 +231,17 @@ export class Thanos {
     return { baseAngle, spread: actualSpread };
   }
 
+  // For backward compatibility, convert direction to vector
+  private static directionToVector(direction: Direction): { x: number; y: number } {
+    switch (direction) {
+      case 'up': return { x: 0, y: -1 };
+      case 'down': return { x: 0, y: 1 };
+      case 'left': return { x: -1, y: 0 };
+      case 'right': return { x: 1, y: 0 };
+      default: return { x: 0, y: -1 }; // Default to up
+    }
+  }
+
   private static easeOutQuad(t: number): number {
     return t * (2 - t);
   }
@@ -201,14 +254,24 @@ export class Thanos {
     let { 
       duration = 0.8, 
       direction = 'up', 
+      vectorX = 0,
+      vectorY = -1,
       onComplete, 
       onStart,
       particleDensity = 1.0,
       angleVariation = 0.5,
       removeFromDOM = false,
       randomness = 0.5,
-      animated = true
+      animated = true,
     } = mergedOptions;
+
+    // For backward compatibility, if direction is provided but vectors aren't explicitly set,
+    // convert the direction to vectors
+    if (options.direction && options.vectorX === undefined && options.vectorY === undefined) {
+      const vector = this.directionToVector(direction);
+      vectorX = vector.x;
+      vectorY = vector.y;
+    }
 
     // Note: The 'animated' option controls whether the element's height collapses smoothly.
     // When animated=false, the element is immediately hidden but particles still animate.
@@ -325,11 +388,11 @@ export class Thanos {
         const imageData = elementCtx.getImageData(0, 0, elementCanvas.width, elementCanvas.height);
         const pixelData = imageData.data;
         
-        const { baseAngle, spread } = this.getDirectionAngles(direction, angleVariation, randomness);
+        const { baseAngle, spread } = this.getVectorAngle(vectorX, vectorY, angleVariation, randomness);
         const baseSpeed = 350;
         
         // Debug log to verify direction and angles
-        console.log(`Direction: ${direction}, Base Angle: ${baseAngle}, Spread: ${spread}, AngleVariation: ${angleVariation}, Randomness: ${randomness}`);
+        console.log(`Vector: (${vectorX}, ${vectorY}), Base Angle: ${baseAngle}, Spread: ${spread}, AngleVariation: ${angleVariation}, Randomness: ${randomness}`);
         
         // Draw the initial image to the canvas (centered with padding)
         ctx.drawImage(elementCanvas, padding, padding);
@@ -402,7 +465,27 @@ export class Thanos {
                 // Use a balanced distribution around the base angle
                 // This ensures particles go in both directions from the base angle
                 const spreadAmount = Math.PI * angleVariation * randomness;
-                angle = directionBaseAngle + (Math.random() * 2 - 1) * spreadAmount;
+                
+                // Use a more balanced random distribution to avoid bias
+                // Instead of Math.random() * 2 - 1, use a more controlled approach
+                // that ensures a more even distribution around the center
+                let randomFactor;
+                
+                if (direction === 'up' || direction === 'down') {
+                  // For vertical directions, ensure we have a balanced horizontal distribution
+                  // This helps prevent the right-leaning bias in the 'up' direction
+                  
+                  // Use a triangular distribution for more particles in the center
+                  // and fewer at the extremes
+                  const r1 = Math.random();
+                  const r2 = Math.random();
+                  randomFactor = (r1 - r2); // Triangular distribution centered at 0
+                } else {
+                  // For horizontal directions, use the standard distribution
+                  randomFactor = Math.random() * 2 - 1;
+                }
+                
+                angle = directionBaseAngle + randomFactor * spreadAmount;
               } else {
                 // If randomness is very low, use a very small random variation for visual interest
                 // Still apply the angleVariation to determine the maximum possible deviation
@@ -417,21 +500,23 @@ export class Thanos {
               
               // Adjust delay based on direction to create a wave effect
               let delayFactor;
-              switch (direction) {
-                case 'up':
-                  delayFactor = normalizedY; // Bottom to top
-                  break;
-                case 'down':
-                  delayFactor = 1 - normalizedY; // Top to bottom
-                  break;
-                case 'left':
-                  delayFactor = normalizedX; // Right to left
-                  break;
-                case 'right':
-                  delayFactor = 1 - normalizedX; // Left to right
-                  break;
-                default:
-                  delayFactor = (normalizedX + normalizedY) / 2; // Diagonal
+              
+              // Calculate delay based on normalized position and vector direction
+              // This creates a wave-like disintegration effect
+              // For upward movement (negative Y), start from bottom (high Y)
+              // For downward movement (positive Y), start from top (low Y)
+              // For leftward movement (negative X), start from right (high X)
+              // For rightward movement (positive X), start from left (low X)
+              
+              if (Math.abs(vectorY) > Math.abs(vectorX)) {
+                // Primarily vertical movement
+                delayFactor = vectorY < 0 ? normalizedY : 1 - normalizedY;
+              } else if (Math.abs(vectorX) > Math.abs(vectorY)) {
+                // Primarily horizontal movement
+                delayFactor = vectorX < 0 ? normalizedX : 1 - normalizedX;
+              } else {
+                // Diagonal or balanced movement
+                delayFactor = (normalizedX + normalizedY) / 2;
               }
               
               // Add some randomness to the delay
@@ -525,30 +610,26 @@ export class Thanos {
               // When randomness is at maximum, increase gravity for more dramatic arcs
               const gravityForce = randomness >= 0.95 ? 120 : 80;
               
-              // Apply gravity based on direction
-              // For 'up' direction, we want gravity to work against the upward movement
-              // For 'down' direction, we want to enhance the downward movement
-              // For 'left' and 'right', apply a smaller gravity effect
+              // Apply gravity based on vector direction
+              // We want gravity to generally work downward, but adjust based on the vector
               let gravityX = 0;
               let gravityY = 0;
               
-              switch (direction) {
-                case 'up':
-                  // For upward movement, apply gravity downward
-                  gravityY = gravityForce;
-                  break;
-                case 'down':
-                  // For downward movement, enhance downward acceleration
-                  gravityY = gravityForce * 0.5;
-                  break;
-                case 'left':
-                  // For leftward movement, apply a small downward gravity
-                  gravityY = gravityForce * 0.7;
-                  break;
-                case 'right':
-                  // For rightward movement, apply a small downward gravity
-                  gravityY = gravityForce * 0.7;
-                  break;
+              // Apply stronger gravity for upward movement to create arcs
+              if (vectorY < -0.5) {
+                // For primarily upward movement, apply stronger downward gravity
+                gravityY = gravityForce;
+              } else if (vectorY > 0.5) {
+                // For primarily downward movement, enhance downward acceleration
+                gravityY = gravityForce * 0.5;
+              } else {
+                // For horizontal or diagonal movement, apply a moderate downward gravity
+                gravityY = gravityForce * 0.7;
+              }
+              
+              // For horizontal movement, add a small gravity component in the opposite direction
+              if (Math.abs(vectorX) > 0.7) {
+                gravityX = -vectorX * gravityForce * 0.2;
               }
               
               // Apply gravity to velocity
@@ -604,30 +685,26 @@ export class Thanos {
             // When randomness is at maximum, increase gravity for more dramatic arcs
             const gravityForce = randomness >= 0.95 ? 120 : 80;
             
-            // Apply gravity based on direction
-            // For 'up' direction, we want gravity to work against the upward movement
-            // For 'down' direction, we want to enhance the downward movement
-            // For 'left' and 'right', apply a smaller gravity effect
+            // Apply gravity based on vector direction
+            // We want gravity to generally work downward, but adjust based on the vector
             let gravityX = 0;
             let gravityY = 0;
             
-            switch (direction) {
-              case 'up':
-                // For upward movement, apply gravity downward
-                gravityY = gravityForce;
-                break;
-              case 'down':
-                // For downward movement, enhance downward acceleration
-                gravityY = gravityForce * 0.5;
-                break;
-              case 'left':
-                // For leftward movement, apply a small downward gravity
-                gravityY = gravityForce * 0.7;
-                break;
-              case 'right':
-                // For rightward movement, apply a small downward gravity
-                gravityY = gravityForce * 0.7;
-                break;
+            // Apply stronger gravity for upward movement to create arcs
+            if (vectorY < -0.5) {
+              // For primarily upward movement, apply stronger downward gravity
+              gravityY = gravityForce;
+            } else if (vectorY > 0.5) {
+              // For primarily downward movement, enhance downward acceleration
+              gravityY = gravityForce * 0.5;
+            } else {
+              // For horizontal or diagonal movement, apply a moderate downward gravity
+              gravityY = gravityForce * 0.7;
+            }
+            
+            // For horizontal movement, add a small gravity component in the opposite direction
+            if (Math.abs(vectorX) > 0.7) {
+              gravityX = -vectorX * gravityForce * 0.2;
             }
             
             // Apply gravity to velocity
@@ -775,22 +852,121 @@ export class Thanos {
       });
     });
   }
+
+  /**
+   * Internal method to fade in an element
+   * @param element The HTML element to animate
+   * @param options Animation options
+   * @returns Promise that resolves when animation completes
+   * @private
+   */
+  private static _fadeIn(
+    element: HTMLElement,
+    options: InternalFadeInOptions = {}
+  ): Promise<void> {
+    const mergedOptions = { ...this.defaultInternalFadeInOptions, ...options };
+    const { 
+      duration = 0.8, 
+      delay = 0, 
+      onComplete, 
+      onStart,
+      animated = true,
+      initialScale = 0.95,
+      easing = 'ease-out'
+    } = mergedOptions;
+
+    return new Promise((resolve) => {
+      // Store original styles
+      const originalDisplay = element.style.display || '';
+      const originalVisibility = element.style.visibility || '';
+      const originalOpacity = element.style.opacity || '';
+      const originalTransform = element.style.transform || '';
+      const originalHeight = element.style.height || '';
+      const originalOverflow = element.style.overflow || '';
+      const originalTransition = element.style.transition || '';
+
+      // Get computed height before hiding
+      const computedHeight = window.getComputedStyle(element).height;
+      
+      // Set initial state
+      element.style.opacity = '0';
+      element.style.transform = `scale(${initialScale})`;
+      element.style.display = originalDisplay === 'none' ? 'block' : originalDisplay;
+      element.style.visibility = 'visible';
+      
+      // If animated is false, just show the element immediately
+      if (!animated) {
+        element.style.opacity = originalOpacity || '1';
+        element.style.transform = originalTransform;
+        
+        // Call onStart callback if provided
+        if (onStart) onStart();
+        
+        // Call onComplete callback if provided
+        if (onComplete) onComplete();
+        resolve();
+        return;
+      }
+      
+      // For height animation
+      if (animated) {
+        // Set initial height to 0 if it was previously hidden
+        if (originalDisplay === 'none' || originalVisibility === 'hidden') {
+          element.style.height = '0';
+          element.style.overflow = 'hidden';
+        }
+      }
+      
+      // Force a reflow
+      element.offsetHeight;
+      
+      // Call onStart callback if provided
+      if (onStart) onStart();
+      
+      // Set transition
+      element.style.transition = `opacity ${duration}s ${easing} ${delay}s, transform ${duration}s ${easing} ${delay}s${animated ? `, height ${duration}s ${easing} ${delay}s` : ''}`;
+      
+      // Start animation
+      setTimeout(() => {
+        element.style.opacity = '1';
+        element.style.transform = 'scale(1)';
+        
+        if (animated && element.style.height === '0px') {
+          element.style.height = computedHeight;
+        }
+      }, 20); // Small delay to ensure transition works
+      
+      // Clean up after animation
+      const totalDuration = (duration + delay) * 1000;
+      setTimeout(() => {
+        // Restore original styles except display and visibility
+        element.style.transition = originalTransition;
+        element.style.overflow = originalOverflow;
+        
+        // If height was animated, reset it
+        if (animated && element.style.height !== originalHeight) {
+          element.style.height = originalHeight;
+        }
+        
+        // Call onComplete callback if provided
+        if (onComplete) onComplete();
+        resolve();
+      }, totalDuration + 50); // Add a small buffer
+    });
+  }
 }
 
 // Make Thanos available globally in browser environments
 if (typeof window !== 'undefined') {
-  // Ensure the snap method is properly bound
-  if (typeof window.Thanos === 'object' && window.Thanos !== null) {
-    window.Thanos.snap = Thanos.snap.bind(Thanos);
-  } else {
-    // Create the global object if it doesn't exist
-    window.Thanos = {
-      snap: Thanos.snap.bind(Thanos)
-    };
-  }
+  // Create a global object with the snap method properly bound
+  const thanosGlobal = {
+    snap: Thanos.snap.bind(Thanos)
+  };
   
-  // For backwards compatibility, also expose as thanossnap
-  window.thanossnap = window.Thanos;
+  // Assign to window.Thanos directly
+  window.Thanos = thanosGlobal;
+  
+
   
   // Debug log
   console.log('thanossnap library loaded, Thanos.snap is available');
