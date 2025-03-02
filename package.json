@@ -24,16 +24,16 @@
     "start:all": "npm run build:all && npm run demo",
     "dev:demo": "npm run build:demo && npm run demo",
     "prepare": "npm run build",
-    "version": "npm run build && git add -A dist",
+    "version": "npm run build",
     "postversion": "git push && git push --tags"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mttetc/vanish-effect.git"
+    "url": "git+https://github.com/mttetc/thanos.snap.git"
   },
-  "homepage": "https://github.com/mttetc/vanish-effect#readme",
+  "homepage": "https://github.com/mttetc/thanos.snap#readme",
   "bugs": {
-    "url": "https://github.com/mttetc/vanish-effect/issues"
+    "url": "https://github.com/mttetc/thanos.snap/issues"
   },
   "keywords": [
     "vanish",
