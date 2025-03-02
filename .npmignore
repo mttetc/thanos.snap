@@ -1,0 +1,27 @@
+# Source files
+src/
+tsconfig.json
+.eslintrc.js
+jest.config.js
+
+# Demo and examples
+demo/
+test-thanos.html
+
+# Development files
+node_modules/
+.vscode/
+.idea/
+.git/
+.github/
+.gitignore
+
+# Build and test files
+coverage/
+.nyc_output/
+*.log
+*.tgz
+
+# Misc
+.DS_Store
+Thumbs.db 

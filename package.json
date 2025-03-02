@@ -1,7 +1,7 @@
 {
-  "name": "thanos.snap",
+  "name": "vanish-effect",
   "version": "1.0.0",
-  "description": "A package that makes elements disappear with a Thanos snap effect",
+  "description": "A lightweight JavaScript library that creates a Thanos-inspired disintegration effect for HTML elements in vanilla JS, React, and Next.js",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -28,16 +28,29 @@
     "version": "npm run build && git add -A dist",
     "postversion": "git push && git push --tags"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mttetc/vanish-effect.git"
+  },
+  "homepage": "https://github.com/mttetc/vanish-effect#readme",
+  "bugs": {
+    "url": "https://github.com/mttetc/vanish-effect/issues"
+  },
   "keywords": [
+    "vanish",
+    "disintegration",
     "thanos",
     "snap",
     "animation",
     "effect",
     "particle",
     "disappear",
-    "telegram"
+    "vanilla-js",
+    "react",
+    "nextjs",
+    "web-animation"
   ],
-  "author": "",
+  "author": "Matthias Etchegaray etchegaray.matthias@gmail.com",
   "license": "MIT",
   "peerDependencies": {
     "motion": "^10.17.0",
@@ -59,4 +72,4 @@
     "serve": "^14.2.1",
     "ts-jest": "^29.1.2"
   }
-} 
+}
