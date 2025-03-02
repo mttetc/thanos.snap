@@ -113,6 +113,37 @@ Thanos.snap(element, {
 - Safari (latest)
 - Edge (latest)
 
+## Known Issues
+
+### Flex Container Gaps
+When using the library with elements inside a flex container that has `gap` property set, you might notice that the gap remains even after the element is visually removed. This is because the element is still in the DOM flow during the animation.
+
+### Padding Issues
+When animating elements with padding, the padding might not be properly included in the disintegration effect.
+
+**Workaround:**
+- Create a nested structure with an outer container (no padding) and an inner container (with padding).
+- Apply the snap effect to the outer container.
+
+```html
+<!-- Recommended structure -->
+<div class="outer-container" id="element-to-snap">
+  <div class="inner-container">
+    Content goes here
+  </div>
+</div>
+
+<style>
+  .outer-container {
+    /* No padding here */
+    position: relative;
+  }
+  .inner-container {
+    padding: 20px; /* Put padding here */
+  }
+</style>
+```
+
 ## Dependencies
 
 This library has the following peer dependencies:
